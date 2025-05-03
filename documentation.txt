@@ -1,0 +1,24 @@
+Jonathan Fulkerson
+NEWM-N328
+5/2/2025
+
+Final Project
+
+Documentation
+
+For this project, I wanted to use data related to something I find interesting. I searched Kaggle for a bit and found some that were interesting, but ultimately weren’t suited for easily porting into a visualization. I ended up using a dataset that contains sales figures for video games. Using this dataset, I was able to get a few visualizations I was satisfied with.
+
+While determining the types of questions I wanted to answer, I looked through the dataset and came up with a few questions that I thought would be a good starting point. While I ran out of time to really expand on these questions, I still think they provided some interesting observations. Those questions were:
+* Which years released the most popular games, based on global sales?
+* Is there a difference between the most popular games in each region of sales?
+* Which publisher has released the highest-selling games?
+* Does a specific genre standout as being the highest selling?
+
+As you may notice in the video, I implemented fairly basic bar charts for all of these except “Is there a difference between the most popular games in each region of sales?”, in which I used a pie chart. This came down to my struggle of not being great at JavaScript in general, as well as poor planning to allow enough time to make iterations.
+
+Some of the goals I had were:
+* Create tooltips for the charts, which show the highest and lowest selling games
+* Allow clicking on parts of the chart to look deeper into specific attributes (Titles, Year, Genre, etc.)
+* Creating iterative charts to answer sub-queries, based on my initial query
+
+While I wasn’t able to hit my goals of implementing these ideas, I still feel more confident with data visualization as a whole after this course and I’m glad I was able to use some of the concepts in practice.
