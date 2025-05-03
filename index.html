@@ -45,9 +45,8 @@
 
 <h1>Video Game Sales Dashboard</h1>
 
-<h3><a href="https://github.com/jfulkersoniu/NEWM-N328-Final-Project/blob/master/documentation.docx" >Documentation</a></h3>
-
-<a href=""></a>
+<h3><a href="https://github.com/jfulkersoniu/NEWM-N328-Final-Project/blob/master/documentation.txt">Documentation</a></h3>
+<h3><a href="https://iu.mediaspace.kaltura.com/media/t/1_l1t8gt05">Demo Video</a></h3>
 
 <!-- Buttons to switch between charts -->
 <div id="buttons">
@@ -236,7 +235,7 @@ d3.csv("vgsales.csv", function(error, data) {
 
 	genreSales.sort(function(a,b) { return b.values - a.values; });
 
-	const salesValues = genreSales.map(d => d.values);  // <-- Use aggregated values, not raw data!
+	const salesValues = genreSales.map(d => d.values);
 	const minSales = d3.min(salesValues);
 	const maxSales = d3.max(salesValues);
 
