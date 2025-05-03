@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>VG Sales Interactive Dashboard</title>
+	<script src="https://d3js.org/d3.v3.min.js"></script>
+	<style>
+		body {
+			font-family: Arial;
+			font-size: 20px;
+		}
+		text { 
+			font-family: Arial; 
+			font-size: 13px;
+		}
+		.axis path, .axis line {
+			fill: none;
+			stroke: black;
+			shape-rendering: crispEdges;
+		}
+		.tick text {
+			fill: black;
+			font-size: 12px;
+		}
+		rect {
+			stroke: white;
+		}
+		circle {
+			fill: #dfb8ff;
+		}
+		.chart-container {
+			display: none;
+		}
+		.active {
+			display: block;
+		}
+		#buttons button {
+			margin-right: 10px;
+			padding: 5px 10px;
+			font-size: 16px;
+		}
+	</style>
+</head>
+
+<body>
+
+<h1>Video Game Sales Dashboard</h1>
+
+<!-- Buttons to switch between charts -->
+<div id="buttons">
+	<button onclick="showChart('yearChart')">Games per Year</button>
+	<button onclick="showChart('regionPie')">Regional Sales Share</button>
+	<button onclick="showChart('publisherChart')">Top Publishers</button>
+	<button onclick="showChart('genreChart')">Top Genres</button>
+</div>
+
+<!-- Chart containers -->
+<div id="yearChart" class="chart-container"></div>
+<div id="regionPie" class="chart-container"></div>
+<div id="publisherChart" class="chart-container"></div>
+<div id="genreChart" class="chart-container"></div>
+
+<script>
+
+// Function to switch between charts
+function showChart(chartId) {
+	d3.selectAll('.chart-container').classed('active', false);
+	d3.select('#' + chartId).classed('active', true);
+}
+
+// Load CSV data
+d3.csv("vgsales.csv", function(error, data) {
+	if (error) throw error;
+
+	// Parse numeric columns
+	data.forEach(function(d) {
+		d.Year = +d.Year;
+		d.NA_Sales = +d.NA_Sales;
+		d.EU_Sales = +d.EU_Sales;
+		d.JP_Sales = +d.JP_Sales;
+		d.Other_Sales = +d.Other_Sales;
+		d.Global_Sales = +d.Global_Sales;
+	});
+
+	// ====================== 1. Bar Chart - Games per Year ======================
+	var yearCounts = d3.nest()
+		.key(function(d) { return d.Year; })
+		.rollup(function(v) { 
+			// Only count games with >1 million global sales (to emphasize "popular")
+			return v.filter(function(d) { return d.Global_Sales > 1; }).length; 
+		})
+		.entries(data)
+		.filter(function(d) { return d.key != "0" && !isNaN(d.key); }); // Remove invalid years
+
+	// Set dimensions
+	var margin = {top: 50, right: 30, bottom: 70, left: 60};
+	var width = 800 - margin.left - margin.right;
+	var height = 500 - margin.top - margin.bottom;
+
+	var svgYear = d3.select("#yearChart").append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	// Scales
+	var x = d3.scale.ordinal()
+		.domain(yearCounts.map(function(d) { return d.key; }))
+		.rangeRoundBands([0, width], 0.1);
+
+	var y = d3.scale.linear()
+		.domain([0, d3.max(yearCounts, function(d) { return d.values; })])
+		.range([height, 0]);
+
+	// Axes
+	svgYear.append("g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(d3.svg.axis().scale(x).orient("bottom").tickFormat(d3.format("d")))
+		.selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end");
+
+	svgYear.append("g")
+		.attr("class", "y axis")
+		.call(d3.svg.axis().scale(y).orient("left"));
+
+	// Bars
+	svgYear.selectAll(".bar")
+		.data(yearCounts)
+		.enter().append("rect")
+		.attr("class", "bar")
+		.attr("x", function(d) { return x(d.key); })
+		.attr("width", x.rangeBand())
+		.attr("y", function(d) { return y(d.values); })
+		.attr("height", function(d) { return height - y(d.values); })
+		.attr("fill", "#69b3a2");
+
+	// Chart title
+	svgYear.append("text")
+		.attr("x", width / 2).attr("y", -10).attr("text-anchor", "middle")
+		.text("Number of High-Selling Games per Year (>1M Global Sales)");
+		
+	// ====================== 2. Pie Chart - Regional Sales ======================
+	var regionTotals = {
+		"NA_Sales": d3.sum(data, d => d.NA_Sales),
+		"EU_Sales": d3.sum(data, d => d.EU_Sales),
+		"JP_Sales": d3.sum(data, d => d.JP_Sales),
+		"Other_Sales": d3.sum(data, d => d.Other_Sales)
+	};
+
+	var pieData = d3.entries(regionTotals);
+	var pie = d3.layout.pie().value(function(d) { return d.value; });
+	var arc = d3.svg.arc().innerRadius(0).outerRadius(150);
+
+	var svgPie = d3.select("#regionPie").append("svg")
+		.attr("width", 400).attr("height", 400)
+		.append("g")
+		.attr("transform", "translate(200,200)");
+
+	var color = d3.scale.category10();
+
+	var g = svgPie.selectAll(".arc")
+		.data(pie(pieData))
+		.enter().append("g")
+		.attr("class", "arc");
+
+	g.append("path")
+		.attr("d", arc)
+		.style("fill", function(d) { return color(d.data.key); });
+
+	g.append("text")
+		.attr("transform", d => `translate(${arc.centroid(d)})`)
+		.attr("dy", "0.35em")
+		.style("text-anchor", "middle")
+		.text(d => `${d.data.key.replace("_Sales","")} (${d.data.value.toFixed(1)}M)`);
+
+
+	svgPie.append("text")
+		.attr("x", 0).attr("y", -170).attr("text-anchor", "middle")
+		.text("Regional Sales Distribution");
+
+	// ====================== 3. Bar Chart - Top Publishers ======================
+	var publisherSales = d3.nest()
+		.key(function(d) { return d.Publisher; })
+		.rollup(function(v) { return d3.sum(v, function(d) { return d.Global_Sales; }); })
+		.entries(data);
+
+	publisherSales.sort(function(a,b) { return b.values - a.values; });
+	var topPublishers = publisherSales.slice(0,10);
+
+	var svgPub = d3.select("#publisherChart").append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var xPub = d3.scale.ordinal()
+		.domain(topPublishers.map(function(d) { return d.key; }))
+		.rangeRoundBands([0, width], 0.1);
+
+	var yPub = d3.scale.linear()
+		.domain([0, d3.max(topPublishers, function(d) { return d.values; })])
+		.range([height, 0]);
+
+	svgPub.append("g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(d3.svg.axis().scale(xPub).orient("bottom"))
+		.selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end");
+
+	svgPub.append("g")
+		.attr("class", "y axis")
+		.call(d3.svg.axis().scale(yPub).orient("left"));
+
+	svgPub.selectAll(".bar")
+		.data(topPublishers)
+		.enter().append("rect")
+		.attr("class", "bar")
+		.attr("x", function(d) { return xPub(d.key); })
+		.attr("width", xPub.rangeBand())
+		.attr("y", function(d) { return yPub(d.values); })
+		.attr("height", function(d) { return height - yPub(d.values); })
+		.attr("fill", "#ffa07a");
+
+	svgPub.append("text")
+		.attr("x", width / 2).attr("y", -10).attr("text-anchor", "middle")
+		.text("Top 10 Publishers by Global Sales (Millions)");
+
+	// ====================== 4. Bar Chart - Top Genres ======================
+	var genreSales = d3.nest()
+		.key(function(d) { return d.Genre; })
+		.rollup(function(v) { return d3.sum(v, function(d) { return d.Global_Sales; }); })
+		.entries(data);
+
+	genreSales.sort(function(a,b) { return b.values - a.values; });
+
+	const salesValues = genreSales.map(d => d.values);  // <-- Use aggregated values, not raw data!
+	const minSales = d3.min(salesValues);
+	const maxSales = d3.max(salesValues);
+
+	const colorScale = d3.scale.linear()
+		.domain([minSales, maxSales])
+		.range(["#fee0d2", "#de2d26"]);
+
+	var svgGenre = d3.select("#genreChart").append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var xGenre = d3.scale.ordinal()
+		.domain(genreSales.map(function(d) { return d.key; }))
+		.rangeRoundBands([0, width], 0.1);
+
+	var yGenre = d3.scale.linear()
+		.domain([0, d3.max(genreSales, function(d) { return d.values; })])
+		.range([height, 0]);
+
+	svgGenre.append("g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(d3.svg.axis().scale(xGenre).orient("bottom"))
+		.selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end");
+
+	svgGenre.append("g")
+		.attr("class", "y axis")
+		.call(d3.svg.axis().scale(yGenre).orient("left"));
+
+	// Create bars + color scale at the same time
+	svgGenre.selectAll(".bar")
+		.data(genreSales)
+		.enter().append("rect")
+		.attr("class", "bar")
+		.attr("x", function(d) { return xGenre(d.key); })
+		.attr("width", xGenre.rangeBand())
+		.attr("y", function(d) { return yGenre(d.values); })
+		.attr("height", function(d) { return height - yGenre(d.values); })
+		.attr("fill", function(d) { return colorScale(d.values); });
+
+	svgGenre.append("text")
+		.attr("x", width / 2).attr("y", -10).attr("text-anchor", "middle")
+		.text("Total Sales by Genre (Millions)");
+
+	// Show first chart by default
+	showChart('yearChart');
+
+});
+
+</script>
+
+</body>
+</html>
